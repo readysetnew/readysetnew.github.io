@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrance hologram pair (preview)</title>
+    <!--
+      Two dollar-sign holograms hovering either side of a covered entrance, for the brothel house in the game.
+      Each one is the main asset in hologram mode. The right one spins the other way and starts at a different
+      point in its bob, so the pair never moves in step. Swap the stand-in entrance below for the real game view,
+      and keep the two <iframe> lines: only their position and size need to match the game.
+    -->
+    <style>
+        html, body { height: 100%; margin: 0; background: #07090a; overflow: hidden; }
+        .scene { position: relative; width: min(100vw, 1100px); height: min(100vh, 620px); margin: 0 auto; top: 50%; transform: translateY(-50%); }
+        .entrance { position: absolute; left: 50%; bottom: 8%; width: 34%; height: 56%; transform: translateX(-50%); background: #14181a; border: 2px solid #26302d; border-radius: 6px 6px 0 0; }
+        .awning { position: absolute; left: 50%; bottom: 62%; width: 42%; height: 9%; transform: translateX(-50%); background: #3a1f2b; border-radius: 6px; }
+        .holo { position: absolute; bottom: 38%; width: 17%; height: 52%; border: 0; background: transparent; pointer-events: none; }
+        .holo.left  { left: 12%; }
+        .holo.right { right: 12%; }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <div class="entrance"></div><div class="awning"></div>
+        <iframe class="holo left"  src="welcome-dollar-3d.html?holo=1&phase=0"           title="" tabindex="-1"></iframe>
+        <iframe class="holo right" src="welcome-dollar-3d.html?holo=1&phase=1.8&dir=-1"  title="" tabindex="-1"></iframe>
+    </div>
+</body>
+</html>
