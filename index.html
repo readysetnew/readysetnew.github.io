@@ -24,19 +24,12 @@
             white-space: pre;
             margin: 0;
         }
-        /* Animated layers, built by the script below from the original art. */
-        #scene { perspective: 1400px; }
-        #stage { position: relative; transform-origin: center center; }
-        #rain, #spin { position: absolute; left: 0; top: 0; }
-        #rain span { position: absolute; left: 0; top: 0; line-height: 1.2; will-change: transform; }
-        #spin { transform-style: preserve-3d; animation: spin 36s linear infinite; }
-        @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
-        @media (prefers-reduced-motion: reduce) { #spin { animation: none; } }
+        #view { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: block; }
     </style>
 </head>
 <body>
-    <div id="scene" hidden><div id="stage"><div id="rain"></div><pre id="spin"></pre></div></div>
-    <!-- Original art, unchanged. Shown as-is if scripts are off. -->
+    <canvas id="view" hidden></canvas>
+    <!-- Original front-view art. It is the blueprint for the 3D model and the fallback if scripts are off. -->
     <pre id="art">
      .                      .               .           .                                           
              .   .                         .               ..                 .                     
@@ -96,83 +89,165 @@
     <script>
     (function () {
         var art = document.getElementById('art');
+        var canvas = document.getElementById('view');
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // ---------- 1. Read the front view ----------
         var lines = art.textContent.replace(/^\n/, '').replace(/\s+$/, '').split('\n');
         var rows = lines.length, cols = 0;
         lines.forEach(function (l) { cols = Math.max(cols, l.length); });
 
-        // Measure one character cell of the monospace font.
         var probe = document.createElement('pre');
         probe.style.cssText = 'position:absolute;visibility:hidden;margin:0;white-space:pre';
         probe.textContent = new Array(101).join('M');
         document.body.appendChild(probe);
-        var cw = probe.getBoundingClientRect().width / 100;
-        var ch = parseFloat(getComputedStyle(art).fontSize) * 1.2;
+        var CW = probe.getBoundingClientRect().width / 100;
+        var CH = parseFloat(getComputedStyle(art).fontSize) * 1.2;
         document.body.removeChild(probe);
+        var W = cols * CW, H = rows * CH;
 
-        // A "." with no solid art character within 2 cells is a loose dot that can fall.
-        function solid(c) { return c !== undefined && c !== ' ' && c !== '.'; }
+        function at(r, c) { var l = lines[r]; return (l && c >= 0 && c < l.length) ? l[c] : ' '; }
+        function solid(ch) { return ch !== ' ' && ch !== '.'; }
         function nearSolid(r, c) {
-            for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) {
-                var l = lines[r + dr];
-                if (l && solid(l[c + dc])) return true;
-            }
+            for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) if (solid(at(r + dr, c + dc))) return true;
             return false;
         }
-        var body = [], dots = [], occupied = [];
+        var occ = [], loose = [];
         for (var r = 0; r < rows; r++) {
-            var out = '';
-            occupied[r] = [];
+            occ[r] = [];
             for (var c = 0; c < cols; c++) {
-                var ch1 = lines[r][c] || ' ';
-                var isLoose = ch1 === '.' && !nearSolid(r, c);
-                if (isLoose) { dots.push({ r: r, c: c }); out += ' '; }
-                else out += ch1;
-                occupied[r][c] = ch1 !== ' ' && !isLoose;
+                var ch0 = at(r, c);
+                var isLoose = ch0 === '.' && !nearSolid(r, c);
+                if (isLoose) loose.push({ r: r, c: c });
+                occ[r][c] = ch0 !== ' ' && !isLoose;
             }
-            body.push(out);
+        }
+        function isOcc(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols && occ[r][c]; }
+
+        // ---------- 2. Grow it into a 3D solid (fantasy depth) ----------
+        // Thickness is a rounded pillow: thickest in the middle, tapering to the rim.
+        var HALF = 72, R = 90, FLOOR = 8, RANK = ' .:-=+*#';
+        var dist = [], hh = [];
+        for (r = 0; r < rows; r++) { dist[r] = []; hh[r] = []; }
+        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
+            if (!occ[r][c]) { dist[r][c] = 0; hh[r][c] = 0; continue; }
+            var best = R;
+            for (var dr2 = -11; dr2 <= 11; dr2++) for (var dc2 = -11; dc2 <= 11; dc2++) {
+                if (!isOcc(r + dr2, c + dc2)) {
+                    var dd = Math.sqrt(Math.pow(dc2 * CW, 2) + Math.pow(dr2 * CH, 2));
+                    if (dd < best) best = dd;
+                }
+            }
+            dist[r][c] = best;
+            var u = 1 - Math.min(best, R) / R;
+            var rel = RANK.indexOf(at(r, c)) / 7;          // denser character = slightly raised, like embossing
+            hh[r][c] = FLOOR + HALF * Math.sqrt(Math.max(0, 1 - u * u)) * (0.82 + 0.18 * rel);
         }
 
-        var W = cols * cw, H = rows * ch;
-        var scene = document.getElementById('scene');
-        var stage = document.getElementById('stage');
-        var spin = document.getElementById('spin');
-        var rain = document.getElementById('rain');
-        stage.style.width = W + 'px';
-        stage.style.height = H + 'px';
-        spin.textContent = body.join('\n');
-        spin.style.width = W + 'px';
+        var CHARS = '.:-=+*#';
+        var P = [];   // surface points: x,y,z, nx,ny,nz, char index
+        function norm(a, b, c) { var m = Math.sqrt(a * a + b * b + c * c) || 1; return [a / m, b / m, c / m]; }
+        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
+            if (!occ[r][c]) continue;
+            var x = (c + 0.5) * CW - W / 2, y = (r + 0.5) * CH - H / 2;
+            var h = hh[r][c];
+            var hx = ((isOcc(r, c + 1) ? hh[r][c + 1] : 0) - (isOcc(r, c - 1) ? hh[r][c - 1] : 0)) / (2 * CW);
+            var hy = ((isOcc(r + 1, c) ? hh[r + 1][c] : 0) - (isOcc(r - 1, c) ? hh[r - 1][c] : 0)) / (2 * CH);
+            var ci = CHARS.indexOf(at(r, c));
+            var nf = norm(-hx, -hy, 1), nb = norm(-hx, -hy, -1);
+            P.push([x, y, h, nf[0], nf[1], nf[2], ci]);          // front: exactly the original character
+            P.push([x, y, -h, nb[0], nb[1], nb[2], ci]);         // back: fantasy mirror of the front
+            // Rim wall so the sides look solid.
+            var ox = (isOcc(r, c - 1) ? 0 : -1) + (isOcc(r, c + 1) ? 0 : 1);
+            var oy = (isOcc(r - 1, c) ? 0 : -1) + (isOcc(r + 1, c) ? 0 : 1);
+            if (ox || oy) {
+                var nw = norm(ox, oy * 0.5, 0);
+                for (var z = -h + 6; z < h - 3; z += 7) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
+            }
+        }
 
-        var spans = dots.map(function (d) {
-            var s = document.createElement('span');
-            s.textContent = '.';
-            rain.appendChild(s);
-            return { el: s, x: d.c * cw, y0: d.r * ch, speed: 14 + Math.random() * 34, c: d.c };
+        // Falling dots live in the room around the model, at random depths.
+        var D = [];
+        loose.forEach(function (d) {
+            D.push({ x: (d.c + 0.5) * CW - W / 2, y0: (d.r + 0.5) * CH - H / 2, z: (Math.random() * 2 - 1) * 170, v: 16 + Math.random() * 34 });
         });
+        // A few extra drops so the depth reads.
+        for (var k = 0; k < 70; k++) D.push({ x: (Math.random() - 0.5) * W * 1.25, y0: (Math.random() - 0.5) * H * 1.1, z: (Math.random() * 2 - 1) * 220, v: 16 + Math.random() * 34 });
 
-        function fit() {
-            var k = Math.min(1, (window.innerWidth - 24) / W, (window.innerHeight - 24) / H);
-            stage.style.transform = 'scale(' + k + ')';
-        }
-        window.addEventListener('resize', fit);
-        fit();
-        art.hidden = true;
-        scene.hidden = false;
-
-        var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var t0 = performance.now();
-        function frame(now) {
-            var t = calm ? 0 : (now - t0) / 1000;
-            for (var i = 0; i < spans.length; i++) {
-                var p = spans[i];
-                var y = (p.y0 + p.speed * t) % H;
-                var row = Math.min(rows - 1, Math.floor(y / ch));
-                // Drops pass behind the dollar sign, so they read as falling around it.
-                p.el.style.visibility = occupied[row][p.c] ? 'hidden' : 'visible';
-                p.el.style.transform = 'translate(' + p.x + 'px,' + y + 'px)';
+        // ---------- 3. Glyph sprites (char x brightness) ----------
+        var LV = 10, SPR = [];
+        var sw = Math.ceil(CW * 2), sh = Math.ceil(CH * 1.4);
+        for (var ci2 = 0; ci2 < CHARS.length; ci2++) {
+            SPR[ci2] = [];
+            for (var lv = 0; lv < LV; lv++) {
+                var cv = document.createElement('canvas'); cv.width = sw * 2; cv.height = sh * 2;
+                var cx = cv.getContext('2d');
+                cx.scale(2, 2);
+                var t = lv / (LV - 1);
+                var g = Math.round(70 + 185 * t), rb = Math.round(255 * Math.pow(t, 3) * 0.7);
+                cx.fillStyle = 'rgb(' + rb + ',' + g + ',' + rb + ')';
+                cx.font = '14px monospace'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+                cx.fillText(CHARS[ci2], sw / 2, sh / 2);
+                SPR[ci2][lv] = cv;
             }
-            if (!calm) requestAnimationFrame(frame);
+        }
+
+        // ---------- 4. Render loop ----------
+        var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var fixed = /[?&]angle=(-?[\d.]+)/.exec(location.search);
+        var CAM = 1100, TILT = -0.16, LIGHT = norm(-0.45, -0.55, 0.75);
+        var cT = Math.cos(TILT), sT = Math.sin(TILT);
+        var vw = 0, vh = 0, dpr = 1, scale = 1;
+        function size() {
+            dpr = Math.min(2, window.devicePixelRatio || 1);
+            vw = window.innerWidth; vh = window.innerHeight;
+            canvas.width = vw * dpr; canvas.height = vh * dpr;
+            scale = Math.min(vw / (W * 1.35), vh / (H * 1.12));
+        }
+        window.addEventListener('resize', size); size();
+        art.hidden = true; canvas.hidden = false;
+
+        var items = [], t0 = performance.now();
+        function frame(now) {
+            var secs = calm ? 0 : (now - t0) / 1000;
+            var th = fixed ? parseFloat(fixed[1]) * Math.PI / 180 : (calm ? 0.5 : secs * 2 * Math.PI / 42);
+            var cy = Math.cos(th), sy = Math.sin(th);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, vw, vh);
+            var n = 0;
+            // Model points: rotate, light, cull back faces.
+            for (var i = 0; i < P.length; i++) {
+                var p = P[i];
+                var x1 = p[0] * cy + p[2] * sy, z1 = -p[0] * sy + p[2] * cy;
+                var y2 = p[1] * cT - z1 * sT, z2 = p[1] * sT + z1 * cT;
+                var nx1 = p[3] * cy + p[5] * sy, nz1 = -p[3] * sy + p[5] * cy;
+                var ny2 = p[4] * cT - nz1 * sT, nz2 = p[4] * sT + nz1 * cT;
+                if (nz2 < 0.1) continue;                                   // facing away
+                var lit = Math.max(0, nx1 * LIGHT[0] + ny2 * LIGHT[1] + nz2 * LIGHT[2]);
+                var s = CAM / (CAM - z2);
+                items[n++] = { z: z2, sx: x1 * s, sy: y2 * s, s: s, ci: p[6], lv: Math.min(LV - 1, Math.floor((0.18 + 0.82 * lit) * LV)) };
+            }
+            // Falling dots (world space, the model turns inside them).
+            for (var j = 0; j < D.length; j++) {
+                var d = D[j];
+                var yy = d.y0 + d.v * secs;
+                var span = H * 1.2;
+                yy = ((yy + span / 2) % span + span) % span - span / 2;
+                var s2 = CAM / (CAM - d.z);
+                items[n++] = { z: d.z, sx: d.x * s2, sy: yy * s2, s: s2, ci: 0, lv: 4 + Math.round(3 * (d.z + 220) / 440) };
+            }
+            items.length = n;
+            items.sort(function (a, b) { return a.z - b.z; });
+            var ox = vw / 2, oy = vh / 2;
+            for (var m = 0; m < n; m++) {
+                var it = items[m], sp = SPR[it.ci][it.lv], q = scale * it.s;
+                ctx.drawImage(sp, ox + it.sx * scale - sw * q / 2, oy + it.sy * scale - sh * q / 2, sw * q, sh * q);
+            }
+            if (!calm && !fixed) requestAnimationFrame(frame);
         }
         frame(performance.now());
+        if (!calm && !fixed) requestAnimationFrame(frame);
     })();
     </script>
 </body>
