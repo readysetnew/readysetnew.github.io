@@ -1,0 +1,21 @@
+# Ready Set New Midnight, terminal colours (works with any terminal that takes hex values)
+background  #09090b
+foreground  #dedede
+cursor      #90ee90
+selection   #1e1917
+black       #1a1c1e
+red         #d71204
+green       #5fbf6a
+yellow      #d4a27f
+blue        #6c9ef8
+magenta     #b48ead
+cyan        #6cc4c4
+white       #dedede
+bright black   #222224
+bright red     #ff4b3a
+bright green   #90ee90
+bright yellow  #e8c39f
+bright blue    #8db4fa
+bright magenta #cdaed0
+bright cyan    #8fdcdc
+bright white   #e8e6e3

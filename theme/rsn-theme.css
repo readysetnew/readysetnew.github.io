@@ -1,0 +1,61 @@
+/*
+ * Ready Set New theme "Midnight".
+ * One set of colours for the OS, the demo app and every attached piece of software.
+ * Reference sources (sampled from screenshots William chose):
+ *   - Claude dark mode side panel: page #09090b, cards #0b0c0e, border #222224, selected row #1e1917 with tan text #d4a27f,
+ *     text #dedede, muted #9e9e9e
+ *   - Alert banner: grey strip #1a1c1e, red #790a02, bright red edge #d71204, text #e8e6e3
+ *   - Signal green from the login frame and the dollar sign: #90ee90 (frame), #5fbf6a (edge), terminal green #0f0
+ * Use the variables, never the raw hex values, so the whole system can be re-themed in one place.
+ */
+:root {
+    /* surfaces */
+    --rsn-bg: #09090b;             /* page and side panel */
+    --rsn-surface: #0b0c0e;        /* cards, code blocks */
+    --rsn-raised: #1a1c1e;         /* raised strips and panels, the banner strip */
+    --rsn-border: #222224;
+    --rsn-selected: #1e1917;       /* selected row */
+
+    /* text */
+    --rsn-text: #dedede;
+    --rsn-text-strong: #e8e6e3;
+    --rsn-muted: #9e9e9e;
+    --rsn-accent: #d4a27f;         /* warm tan: selected labels, links, highlights */
+
+    /* signal colours */
+    --rsn-red: #790a02;            /* alert body */
+    --rsn-red-edge: #d71204;       /* alert edge line, errors */
+    --rsn-green: #90ee90;          /* primary action, success, login frame */
+    --rsn-green-edge: #5fbf6a;
+    --rsn-terminal: #00ff00;       /* text-art and terminal glow */
+
+    /* shape and type */
+    --rsn-radius: 8px;
+    --rsn-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --rsn-mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", Consolas, monospace;
+}
+
+html, body { background: var(--rsn-bg); color: var(--rsn-text); font-family: var(--rsn-font); }
+a { color: var(--rsn-accent); }
+
+.rsn-sidebar { background: var(--rsn-bg); color: var(--rsn-muted); border-right: 1px solid var(--rsn-border); }
+.rsn-sidebar a, .rsn-sidebar .item { display: block; padding: 8px 14px; border-radius: var(--rsn-radius); color: var(--rsn-muted); text-decoration: none; }
+.rsn-sidebar .item:hover { color: var(--rsn-text); }
+.rsn-sidebar .item.active { background: var(--rsn-selected); color: var(--rsn-accent); }
+
+.rsn-card { background: var(--rsn-surface); border: 1px solid var(--rsn-border); border-radius: var(--rsn-radius); padding: 16px; }
+.rsn-raised { background: var(--rsn-raised); }
+.rsn-code { background: var(--rsn-surface); border: 1px solid var(--rsn-border); border-radius: var(--rsn-radius); padding: 10px 14px; font-family: var(--rsn-mono); }
+
+.rsn-btn { background: var(--rsn-green); color: #031; border: 0; border-radius: var(--rsn-radius); padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+.rsn-btn:hover { background: #b6f5b6; }
+.rsn-btn.secondary { background: var(--rsn-raised); color: var(--rsn-text); border: 1px solid var(--rsn-border); }
+.rsn-input { background: var(--rsn-surface); color: var(--rsn-text); border: 1px solid var(--rsn-border); border-radius: var(--rsn-radius); padding: 10px 12px; font: inherit; }
+.rsn-input:focus { outline: none; border-color: var(--rsn-green-edge); box-shadow: 0 0 0 2px rgba(144,238,144,.18); }
+
+/* alert bar: grey strip above a deep red banner with a thin bright edge */
+.rsn-alert-strip { background: var(--rsn-raised); padding-top: 28px; }
+.rsn-alert { display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: 100%; min-height: 40px; padding: 8px 16px; background: var(--rsn-red); color: var(--rsn-text-strong); border: 1px solid var(--rsn-red-edge); font: 15px/1.4 var(--rsn-font); }
+.rsn-alert::before { content: "\26A0"; font-size: 1.1em; }
+.rsn-alert span { flex: 1; }
+.rsn-alert button { background: none; border: 0; color: inherit; font: inherit; font-size: 1.2em; cursor: pointer; padding: 0 4px; }

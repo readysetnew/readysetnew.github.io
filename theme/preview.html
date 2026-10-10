@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midnight theme preview</title>
+    <link rel="stylesheet" href="rsn-theme.css">
+    <style>
+        body { margin: 0; }
+        .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+        .rsn-sidebar { padding: 20px 12px; }
+        .rsn-sidebar h2 { font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--rsn-text); margin: 18px 14px 6px; }
+        main { padding: 0 0 40px; }
+        .body { padding: 24px 28px; display: grid; gap: 16px; max-width: 720px; }
+        h1 { margin: 0; font-size: 1.4rem; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        @media (max-width: 640px) { .layout { grid-template-columns: 1fr; } .rsn-sidebar { border-right: 0; border-bottom: 1px solid var(--rsn-border); } }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <nav class="rsn-sidebar">
+            <h2>Projects</h2>
+            <a class="item" href="#">Overview</a>
+            <a class="item active" href="#">Dew Project</a>
+            <a class="item" href="#">Wallet</a>
+            <h2>System</h2>
+            <a class="item" href="#">Settings</a>
+        </nav>
+        <main>
+            <div class="rsn-alert-strip"><div class="rsn-alert" role="alert"><span>Your wallet is empty. Add funds to continue.</span></div></div>
+            <div class="body">
+                <h1>Midnight</h1>
+                <p>Page <code>#09090b</code>, cards <code>#0b0c0e</code>, strip <code>#1a1c1e</code>, tan accent <code>#d4a27f</code>.</p>
+                <div class="rsn-card">A card on the page. <a href="#">A link in the accent colour.</a></div>
+                <div class="rsn-code">npm run start</div>
+                <div class="row"><button class="rsn-btn">Log in</button><button class="rsn-btn secondary">Cancel</button><input class="rsn-input" placeholder="password"></div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
