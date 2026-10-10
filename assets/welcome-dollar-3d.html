@@ -15,6 +15,7 @@
         hold=8         seconds on screen between fade in and fade out (default 8)
         fadein=1.8     fade in seconds       fadeout=1.4   fade out seconds
         angle=40       freeze at a fixed angle (testing)
+        shape=drawn    use the drawn $ glyph instead of the original text-art body (default is the original)
 
       When the fade out finishes it fires window event "rsn-welcome-done" and posts
       {type:"rsn-welcome-done"} to the parent window, so the next scene can start.
@@ -42,7 +43,69 @@
         var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         // ---------- 1. Draw a flat dollar sign, then read it as a grid of character cells ----------
-        var CW = 8.4, CH = 16.8, cols = 68, rows = 54, W = cols * CW, H = rows * CH;
+        var ART = `     .                      .               .           .                                           
+             .   .                         .               ..                 .                     
+  .                                                          .      .        .        .             
+                   .                    ..........                            .          .          
+                                      ..=***+###--:....                                     .       
+.                                     .-=====*##---------:.                    .             .      
+                                   ....-=====*##=========:.            .                            
+           .                  ...:--===============+**#**=....                                   .  
+                         ...:============================*##*----:.....               .      .      
+                       ..:==================================*##+------..             .              
+ .                    .:======================================###=------:..                 .       
+                     .-========================================*##*-------:.     .                  
+ .                 ..===========================================+##*--------.        .             .
+        .          .==================+======+===================*##*--------.                      
+  .               .-===============+##*======*#*==================###=--------.                     
+          .       .===============+##*+======*##==================+###--------:.                    
+           .    . :===============*##*+======*##--======+++***#************+=-:.         .          
+                  -===============*##*+======*#*-:---++============-:..           .         .       
+     .      .     -+==============+*#*++====+##*::::::::::......             .                      
+           .      :++++++++++++++++++**++++++##*::::::::::.             .         .  .     .        
+          .       .++++++++++++++++++++++++++*##::::::::::.                                         
+        .         .-+++++++++++++++++++++++++++++++==-----:.....  .      .            .             
+   .         .     .=+++++++++++++++++++++++++++++++++**=------:...          .                      
+                   ..=++++++++++++++++++++++++++++++++++++**+-:::::::..  .                          
+                     .:++++++++++++++++++++++++++++++++++++++*#+-:::::::...       .            .    
+..                     .-++++++++++++++++++++++++++++++++++++++*#*-::::::::.                    .  .
+     .          .    .   ..=+++++++++++++++++++++++++++++++++++++##+::::::::...        .       .    
+              .               :+++++++++++++++++++++++++++++++++++*##:::::::::.                     
+                                ..:-+*+++++++++++++++++++++++++++++###-::::::::. .                  
+                                 .  ...++++++++++++++++++++++++++++*##*:::::::::.              .    
+                .        .            .+*****##*+***************+***###-::::::::.                   
+             .              ...........+*****###-=+******************##*::::::::.    .  .       .   
+ .               .........:-=+++*#*-::-+*****###---=*****************###::::::::.                   
+               .=+***************##----+*****###----+****************###::::::::.       .        .  
+       . .     .-*****************#+---******##*----+****************###::::::::.                   
+               ..******************#===******###********************###*::::::::.  .                
+           .     -*******************==******#####*****************#####********.                   
+                ..=**************************###*******************############..        .          
+       .   ..     .=**********************************************############-..      .     .      
+                   .-*******************************************############*:.    ..               
+                     .+****************************************############*.          .            
+       .     . .      .:*#################################################:.                        
+              . .      ..-#############################################+:..     .             .     
+                          .:=######################################*=:. .                           
+      .     . .             ...:+*#########################**+=-:...       .      .                 
+                                    ..:*#########**++=---:.    .            ..                      
+                         ..............*#######*---------:................                         .
+             .........................:########*::::::::::..........................      .         
+   .       ......................:::::-########*:::::------::::::......................          .  
+      .    .....................:::::---===++++*+*++++===----:::::......................            
+ .    .    ............................::::::::::-:::::::::..........................               
+           .       ............................................................              .      
+  .                        .......  .   . ...............       ......        .   .   .     .       
+                   .                               .                                       .        
+                                                                              .                     `;
+        var ORIG = q.get('shape') !== 'drawn';
+        var CW = 8.4, CH = 16.8, cols = 68, rows = 54, lines = null;
+        if (ORIG) {
+            lines = ART.replace(/^\n/, '').replace(/\s+$/, '').split('\n');
+            rows = lines.length; cols = 0;
+            lines.forEach(function (l) { cols = Math.max(cols, l.length); });
+        }
+        var W = cols * CW, H = rows * CH;
         var g = document.createElement('canvas'); g.width = Math.ceil(W); g.height = Math.ceil(H);
         var gx = g.getContext('2d');
         gx.strokeStyle = '#fff'; gx.lineCap = 'butt';
@@ -54,12 +117,16 @@
         gx.stroke();
         gx.lineWidth = 38;
         gx.beginPath(); gx.moveTo(cx0, 24); gx.lineTo(cx0, H - 24); gx.stroke();      // the vertical bar
-        var img = gx.getImageData(0, 0, g.width, g.height).data;
+        var img = ORIG ? null : gx.getImageData(0, 0, g.width, g.height).data;
 
         var occ = [], r, c;
+        function at(r2, c2) { var l = lines && lines[r2]; return (l && c2 >= 0 && c2 < l.length) ? l[c2] : ' '; }
+        function solidCh(ch) { return ch !== ' ' && ch !== '.'; }
+        function nearSolid(r2, c2) { for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) if (solidCh(at(r2 + a, c2 + b))) return true; return false; }
         for (r = 0; r < rows; r++) {
             occ[r] = [];
             for (c = 0; c < cols; c++) {
+                if (ORIG) { var ch0 = at(r, c); occ[r][c] = ch0 !== ' ' && !(ch0 === '.' && !nearSolid(r, c)); continue; }
                 var x0 = Math.floor(c * CW), x1 = Math.min(g.width, Math.floor((c + 1) * CW)), y0 = Math.floor(r * CH), y1 = Math.min(g.height, Math.floor((r + 1) * CH));
                 var sum = 0, cnt = 0;
                 for (var yy = y0; yy < y1; yy++) for (var xx = x0; xx < x1; xx++) { sum += img[(yy * g.width + xx) * 4 + 3]; cnt++; }
@@ -87,6 +154,19 @@
             var rr = rho[r][c], e = Math.min(Math.max(1, dist[r][c] - CW * 0.5), rr);
             hh[r][c] = Math.sqrt(Math.max(0, rr * rr - (rr - e) * (rr - e)));
         }
+        if (ORIG) {
+            // Side profile = front profile: at every row the body is as deep as it is wide, with a round cross-section.
+            for (r = 0; r < rows; r++) {
+                var mnC = cols, mxC = -1;
+                for (c = 0; c < cols; c++) if (occ[r][c]) { if (c < mnC) mnC = c; if (c > mxC) mxC = c; }
+                if (mxC < 0) continue;
+                var Rr = (mxC - mnC + 1) * CW / 2, xcr = (mnC + mxC + 1) / 2 * CW;
+                for (c = 0; c < cols; c++) if (occ[r][c]) {
+                    var dx = (c + 0.5) * CW - xcr;
+                    hh[r][c] = Math.max(6, Math.sqrt(Math.max(0, Rr * Rr - dx * dx)));
+                }
+            }
+        }
         function norm(a, b, d) { var m = Math.sqrt(a * a + b * b + d * d) || 1; return [a / m, b / m, d / m]; }
         var P = [];   // x, y, z, nx, ny, nz
         for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
@@ -95,13 +175,14 @@
             var hx = ((isOcc(r, c + 1) ? hh[r][c + 1] : 0) - (isOcc(r, c - 1) ? hh[r][c - 1] : 0)) / (2 * CW);
             var hy = ((isOcc(r + 1, c) ? hh[r + 1][c] : 0) - (isOcc(r - 1, c) ? hh[r - 1][c] : 0)) / (2 * CH);
             var nf = norm(-hx, -hy, 1), nb = norm(-hx, -hy, -1);
-            P.push([x, y, h, nf[0], nf[1], nf[2]]);
-            P.push([x, y, -h, nb[0], nb[1], nb[2]]);
+            var oc = ORIG ? '.:-=+*#'.indexOf(at(r, c)) : -1;
+            P.push([x, y, h, nf[0], nf[1], nf[2], oc]);
+            P.push([x, y, -h, nb[0], nb[1], nb[2], oc]);
             var ox = (isOcc(r, c - 1) ? 0 : -1) + (isOcc(r, c + 1) ? 0 : 1);
             var oy = (isOcc(r - 1, c) ? 0 : -1) + (isOcc(r + 1, c) ? 0 : 1);
             if (ox || oy) {
                 var nw = norm(ox, oy * 0.5, 0);
-                for (var z = -h + 5; z < h - 2; z += 9) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0]);
+                for (var z = -h + 5; z < h - 2; z += 9) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
             }
         }
 
@@ -163,7 +244,7 @@
                 if (p[5] === 0) lit *= 0.6;
                 lit = Math.min(1, lit);
                 var s = CAM / (CAM - z2);
-                items[n++] = { z: z2, sx: x1 * s, sy: y2 * s, s: s, ci: Math.min(6, Math.floor(lit * 7)), lv: Math.min(LV - 1, Math.floor((0.35 + 0.65 * lit) * LV)) };
+                items[n++] = { z: z2, sx: x1 * s, sy: y2 * s, s: s, ci: (p[6] >= 0 ? p[6] : Math.min(6, Math.floor(lit * 7))), lv: Math.min(LV - 1, Math.floor((0.35 + 0.65 * lit) * LV)) };
             }
             for (var j = 0; j < D.length; j++) {
                 var d = D[j], span = H * 1.25;
