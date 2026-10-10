@@ -18,7 +18,6 @@
 <body>
     <iframe id="welcome" src="assets/welcome-dollar-3d.html?embed=1&hold=7" title="Welcome"></iframe>
     <div id="next"><div><h1>Ready Set New</h1><p><span class="dot"></span>Server online. The system will appear here.</p></div></div>
-    <script src="assets/rsn-gate.js"></script>
     <script>
         var started = false;
         function nextScene() {
@@ -26,8 +25,8 @@
             started = true;
             var f = document.getElementById('welcome');
             if (f) f.remove();
-            // Password gate first, then the project scene.
-            RSNGate.require(function () { document.getElementById('next').classList.add('show'); });
+            // Stand-in for the next scenes. Protected projects are locked on the server, not in this page.
+            document.getElementById('next').classList.add('show');
         }
         window.addEventListener('message', function (e) { if (e.data && e.data.type === 'rsn-welcome-done') nextScene(); });
         setTimeout(nextScene, 20000);   // safety net: never leave a blank screen
