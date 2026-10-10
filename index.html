@@ -125,48 +125,54 @@
         }
         function isOcc(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols && occ[r][c]; }
 
-        // ---------- 2. Grow it into a 3D solid (fantasy depth) ----------
-        // Depth equals the width of the S, with softly rounded edges.
-        var minC = cols, maxC = 0;
-        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) if (occ[r][c]) { if (c < minC) minC = c; if (c > maxC) maxC = c; }
-        var SW = (maxC - minC + 1) * CW;
-        var HALF = SW / 2, BEV = 40, RANK = ' .:-=+*#';
-        var dist = [], hh = [];
-        for (r = 0; r < rows; r++) { dist[r] = []; hh[r] = []; }
+        // ---------- 2. Grow it into a true 3D solid (fantasy depth) ----------
+        // Every stroke becomes a round tube: its thickness equals its own width, so the cross-section is a circle.
+        // The tube also weaves toward and away from the viewer along its length, so no part of it lies in one plane.
+        var RANK = ' .:-=+*#', CHARS = '.:-=+*#';
+        var INF = 1e9, dg = Math.sqrt(CW * CW + CH * CH);
+        var dist = [], rho = [], hh = [];
+        for (r = 0; r < rows; r++) { dist[r] = []; rho[r] = []; hh[r] = []; for (c = 0; c < cols; c++) dist[r][c] = occ[r][c] ? INF : 0; }
+        function rd(r2, c2) { return (r2 >= 0 && r2 < rows && c2 >= 0 && c2 < cols) ? dist[r2][c2] : 0; }
+        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) if (occ[r][c]) {   // distance to the outline, pass 1
+            dist[r][c] = Math.min(dist[r][c], rd(r - 1, c) + CH, rd(r, c - 1) + CW, rd(r - 1, c - 1) + dg, rd(r - 1, c + 1) + dg);
+        }
+        for (r = rows - 1; r >= 0; r--) for (c = cols - 1; c >= 0; c--) if (occ[r][c]) {   // pass 2
+            dist[r][c] = Math.min(dist[r][c], rd(r + 1, c) + CH, rd(r, c + 1) + CW, rd(r + 1, c + 1) + dg, rd(r + 1, c - 1) + dg);
+        }
+        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {   // local stroke radius = biggest distance nearby
+            if (!occ[r][c]) { rho[r][c] = 0; continue; }
+            var mx = 0;
+            for (var a1 = -5; a1 <= 5; a1++) for (var b1 = -10; b1 <= 10; b1++) { var q = rd(r + a1, c + b1); if (q > mx) mx = q; }
+            rho[r][c] = Math.min(130, Math.max(mx, 14));
+        }
+        var Z0 = 170;                                           // how far the tube weaves in depth
+        function zc(y) { return Z0 * Math.cos(2 * Math.PI * y / H); }       // far at the ends, near in the middle
+        function dzc(y) { return -Z0 * 2 * Math.PI / H * Math.sin(2 * Math.PI * y / H); }
         for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
-            if (!occ[r][c]) { dist[r][c] = 0; hh[r][c] = 0; continue; }
-            var best = BEV;
-            for (var dr2 = -3; dr2 <= 3; dr2++) for (var dc2 = -5; dc2 <= 5; dc2++) {
-                if (!isOcc(r + dr2, c + dc2)) {
-                    var dd = Math.sqrt(Math.pow(dc2 * CW, 2) + Math.pow(dr2 * CH, 2));
-                    if (dd < best) best = dd;
-                }
-            }
-            dist[r][c] = best;
-            var u = 1 - Math.min(best, BEV) / BEV;
-            var rel = RANK.indexOf(at(r, c)) / 7;          // denser character = slightly raised, like embossing
-            hh[r][c] = HALF - BEV + BEV * Math.sqrt(Math.max(0, 1 - u * u)) + rel * 6;
+            if (!occ[r][c]) { hh[r][c] = 0; continue; }
+            var de = Math.max(1, dist[r][c] - CW * 0.5), rr = rho[r][c];
+            var e = Math.min(de, rr);
+            hh[r][c] = Math.sqrt(Math.max(0, rr * rr - (rr - e) * (rr - e)));
         }
 
-        var CHARS = '.:-=+*#';
-        var P = [];   // surface points: x,y,z, nx,ny,nz, char index
         function norm(a, b, c) { var m = Math.sqrt(a * a + b * b + c * c) || 1; return [a / m, b / m, c / m]; }
+        var P = [];   // surface points: x,y,z, nx,ny,nz, char index
         for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
             if (!occ[r][c]) continue;
             var x = (c + 0.5) * CW - W / 2, y = (r + 0.5) * CH - H / 2;
-            var h = hh[r][c];
+            var h = hh[r][c], zm = zc(y), dz = dzc(y);
             var hx = ((isOcc(r, c + 1) ? hh[r][c + 1] : 0) - (isOcc(r, c - 1) ? hh[r][c - 1] : 0)) / (2 * CW);
             var hy = ((isOcc(r + 1, c) ? hh[r + 1][c] : 0) - (isOcc(r - 1, c) ? hh[r - 1][c] : 0)) / (2 * CH);
             var ci = CHARS.indexOf(at(r, c));
-            var nf = norm(-hx, -hy, 1), nb = norm(-hx, -hy, -1);
-            P.push([x, y, h, nf[0], nf[1], nf[2], ci]);          // front: exactly the original character
-            P.push([x, y, -h, nb[0], nb[1], nb[2], ci]);         // back: fantasy mirror of the front
-            // Rim wall so the sides look solid.
+            var nf = norm(-hx, -(dz + hy), 1), nb = norm(-hx, dz - hy, -1);
+            P.push([x, y, zm + h, nf[0], nf[1], nf[2], ci]);     // front face: the original characters, in place
+            P.push([x, y, zm - h, nb[0], nb[1], nb[2], ci]);     // rear face of the tube
+            // Rim wall so the tube looks solid from the side.
             var ox = (isOcc(r, c - 1) ? 0 : -1) + (isOcc(r, c + 1) ? 0 : 1);
             var oy = (isOcc(r - 1, c) ? 0 : -1) + (isOcc(r + 1, c) ? 0 : 1);
             if (ox || oy) {
                 var nw = norm(ox, oy * 0.5, 0);
-                for (var z = -h + 6; z < h - 3; z += 13) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
+                for (var z = zm - h + 5; z < zm + h - 2; z += 10) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
             }
         }
 
@@ -206,7 +212,7 @@
             dpr = Math.min(2, window.devicePixelRatio || 1);
             vw = window.innerWidth; vh = window.innerHeight;
             canvas.width = vw * dpr; canvas.height = vh * dpr;
-            scale = Math.min(vw / (W * 1.35), vh / (H * 1.12));
+            scale = Math.min(vw / (W * 1.3), vh / (H * 1.15));
         }
         window.addEventListener('resize', size); size();
         art.hidden = true; canvas.hidden = false;
