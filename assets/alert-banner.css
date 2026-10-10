@@ -1,0 +1,20 @@
+/* Ready Set New alert bar: dark grey strip, deep red banner with a thin bright red edge, off-white text.
+   Colours were sampled from the reference banner William liked.
+   Use:  <div class="rsn-alert" role="alert"><span>Message</span><button aria-label="Dismiss">x</button></div> */
+:root {
+    --rsn-grey: #1a1c1e;
+    --rsn-red: #790a02;
+    --rsn-red-edge: #d71204;
+    --rsn-text: #e8e6e3;
+}
+.rsn-alert {
+    display: flex; align-items: center; gap: 12px;
+    box-sizing: border-box; width: 100%; min-height: 40px; padding: 8px 16px;
+    background: var(--rsn-red); color: var(--rsn-text);
+    border: 1px solid var(--rsn-red-edge);
+    font: 15px/1.4 system-ui, sans-serif;
+}
+.rsn-alert::before { content: "\26A0"; font-size: 1.1em; }
+.rsn-alert span { flex: 1; }
+.rsn-alert button { background: none; border: 0; color: var(--rsn-text); font: inherit; font-size: 1.2em; cursor: pointer; padding: 0 4px; }
+.rsn-alert-strip { background: var(--rsn-grey); padding-top: 28px; }   /* the dark grey strip above the banner */

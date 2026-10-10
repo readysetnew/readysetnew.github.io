@@ -14,3 +14,4 @@
   `phase=` and `dir=-1` keep a pair of copies out of step.
 - `ambient-dollar-3d.html` - the previous round-body version, kept for backgrounds.
 - `brothel-hologram-pair.html` - two holograms either side of a stand-in covered entrance, ready to adapt for the game.
+- `alert-banner.css` - the dark grey and deep red alert bar style (grey #1a1c1e, red #790a02, edge #d71204, text #e8e6e3). `wallet-empty.html` uses it with the ambient 3D dollar.
