@@ -126,23 +126,26 @@
         function isOcc(r, c) { return r >= 0 && r < rows && c >= 0 && c < cols && occ[r][c]; }
 
         // ---------- 2. Grow it into a 3D solid (fantasy depth) ----------
-        // Thickness is a rounded pillow: thickest in the middle, tapering to the rim.
-        var HALF = 72, R = 90, FLOOR = 8, RANK = ' .:-=+*#';
+        // Depth equals the width of the S, with softly rounded edges.
+        var minC = cols, maxC = 0;
+        for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) if (occ[r][c]) { if (c < minC) minC = c; if (c > maxC) maxC = c; }
+        var SW = (maxC - minC + 1) * CW;
+        var HALF = SW / 2, BEV = 40, RANK = ' .:-=+*#';
         var dist = [], hh = [];
         for (r = 0; r < rows; r++) { dist[r] = []; hh[r] = []; }
         for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
             if (!occ[r][c]) { dist[r][c] = 0; hh[r][c] = 0; continue; }
-            var best = R;
-            for (var dr2 = -11; dr2 <= 11; dr2++) for (var dc2 = -11; dc2 <= 11; dc2++) {
+            var best = BEV;
+            for (var dr2 = -3; dr2 <= 3; dr2++) for (var dc2 = -5; dc2 <= 5; dc2++) {
                 if (!isOcc(r + dr2, c + dc2)) {
                     var dd = Math.sqrt(Math.pow(dc2 * CW, 2) + Math.pow(dr2 * CH, 2));
                     if (dd < best) best = dd;
                 }
             }
             dist[r][c] = best;
-            var u = 1 - Math.min(best, R) / R;
+            var u = 1 - Math.min(best, BEV) / BEV;
             var rel = RANK.indexOf(at(r, c)) / 7;          // denser character = slightly raised, like embossing
-            hh[r][c] = FLOOR + HALF * Math.sqrt(Math.max(0, 1 - u * u)) * (0.82 + 0.18 * rel);
+            hh[r][c] = HALF - BEV + BEV * Math.sqrt(Math.max(0, 1 - u * u)) + rel * 6;
         }
 
         var CHARS = '.:-=+*#';
@@ -163,17 +166,17 @@
             var oy = (isOcc(r - 1, c) ? 0 : -1) + (isOcc(r + 1, c) ? 0 : 1);
             if (ox || oy) {
                 var nw = norm(ox, oy * 0.5, 0);
-                for (var z = -h + 6; z < h - 3; z += 7) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
+                for (var z = -h + 6; z < h - 3; z += 13) P.push([x + ox * CW * 0.35, y + oy * CH * 0.35, z, nw[0], nw[1], 0, 6]);
             }
         }
 
         // Falling dots live in the room around the model, at random depths.
         var D = [];
         loose.forEach(function (d) {
-            D.push({ x: (d.c + 0.5) * CW - W / 2, y0: (d.r + 0.5) * CH - H / 2, z: (Math.random() * 2 - 1) * 170, v: 16 + Math.random() * 34 });
+            D.push({ x: (d.c + 0.5) * CW - W / 2, y0: (d.r + 0.5) * CH - H / 2, z: (Math.random() * 2 - 1) * 420, v: 16 + Math.random() * 34 });
         });
         // A few extra drops so the depth reads.
-        for (var k = 0; k < 70; k++) D.push({ x: (Math.random() - 0.5) * W * 1.25, y0: (Math.random() - 0.5) * H * 1.1, z: (Math.random() * 2 - 1) * 220, v: 16 + Math.random() * 34 });
+        for (var k = 0; k < 70; k++) D.push({ x: (Math.random() - 0.5) * W * 1.25, y0: (Math.random() - 0.5) * H * 1.1, z: (Math.random() * 2 - 1) * 420, v: 16 + Math.random() * 34 });
 
         // ---------- 3. Glyph sprites (char x brightness) ----------
         var LV = 10, SPR = [];
@@ -196,7 +199,7 @@
         // ---------- 4. Render loop ----------
         var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
         var fixed = /[?&]angle=(-?[\d.]+)/.exec(location.search);
-        var CAM = 1100, TILT = -0.16, LIGHT = norm(-0.45, -0.55, 0.75);
+        var CAM = 2400, TILT = -0.16, LIGHT = norm(-0.45, -0.55, 0.75);
         var cT = Math.cos(TILT), sT = Math.sin(TILT);
         var vw = 0, vh = 0, dpr = 1, scale = 1;
         function size() {
@@ -225,6 +228,7 @@
                 var ny2 = p[4] * cT - nz1 * sT, nz2 = p[4] * sT + nz1 * cT;
                 if (nz2 < 0.1) continue;                                   // facing away
                 var lit = Math.max(0, nx1 * LIGHT[0] + ny2 * LIGHT[1] + nz2 * LIGHT[2]);
+                if (p[5] === 0) lit *= 0.45;                                // rim walls stay dim so the face reads clearly
                 var s = CAM / (CAM - z2);
                 items[n++] = { z: z2, sx: x1 * s, sy: y2 * s, s: s, ci: p[6], lv: Math.min(LV - 1, Math.floor((0.18 + 0.82 * lit) * LV)) };
             }
@@ -235,7 +239,7 @@
                 var span = H * 1.2;
                 yy = ((yy + span / 2) % span + span) % span - span / 2;
                 var s2 = CAM / (CAM - d.z);
-                items[n++] = { z: d.z, sx: d.x * s2, sy: yy * s2, s: s2, ci: 0, lv: 4 + Math.round(3 * (d.z + 220) / 440) };
+                items[n++] = { z: d.z, sx: d.x * s2, sy: yy * s2, s: s2, ci: 0, lv: 4 + Math.round(3 * (d.z + 420) / 840) };
             }
             items.length = n;
             items.sort(function (a, b) { return a.z - b.z; });
