@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIG and small DOLLAR IDEAS</title>
+    <style>
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #000;
+            color: #0f0; /* Green text on black background, classic terminal style */
+            font-family: monospace;
+            overflow: hidden;
+        }
+        pre {
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.2;
+            white-space: pre;
+            margin: 0;
+        }
+        /* Animated layers, built by the script below from the original art. */
+        #scene { perspective: 1400px; }
+        #stage { position: relative; transform-origin: center center; }
+        #rain, #spin { position: absolute; left: 0; top: 0; }
+        #rain span { position: absolute; left: 0; top: 0; line-height: 1.2; will-change: transform; }
+        #spin { transform-style: preserve-3d; animation: spin 36s linear infinite; }
+        @keyframes spin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+        @media (prefers-reduced-motion: reduce) { #spin { animation: none; } }
+    </style>
+</head>
+<body>
+    <div id="scene" hidden><div id="stage"><div id="rain"></div><pre id="spin"></pre></div></div>
+    <!-- Original art, unchanged. Shown as-is if scripts are off. -->
+    <pre id="art">
+     .                      .               .           .                                           
+             .   .                         .               ..                 .                     
+  .                                                          .      .        .        .             
+                   .                    ..........                            .          .          
+                                      ..=***+###--:....                                     .       
+.                                     .-=====*##---------:.                    .             .      
+                                   ....-=====*##=========:.            .                            
+           .                  ...:--===============+**#**=....                                   .  
+                         ...:============================*##*----:.....               .      .      
+                       ..:==================================*##+------..             .              
+ .                    .:======================================###=------:..                 .       
+                     .-========================================*##*-------:.     .                  
+ .                 ..===========================================+##*--------.        .             .
+        .          .==================+======+===================*##*--------.                      
+  .               .-===============+##*======*#*==================###=--------.                     
+          .       .===============+##*+======*##==================+###--------:.                    
+           .    . :===============*##*+======*##--======+++***#************+=-:.         .          
+                  -===============*##*+======*#*-:---++============-:..           .         .       
+     .      .     -+==============+*#*++====+##*::::::::::......             .                      
+           .      :++++++++++++++++++**++++++##*::::::::::.             .         .  .     .        
+          .       .++++++++++++++++++++++++++*##::::::::::.                                         
+        .         .-+++++++++++++++++++++++++++++++==-----:.....  .      .            .             
+   .         .     .=+++++++++++++++++++++++++++++++++**=------:...          .                      
+                   ..=++++++++++++++++++++++++++++++++++++**+-:::::::..  .                          
+                     .:++++++++++++++++++++++++++++++++++++++*#+-:::::::...       .            .    
+..                     .-++++++++++++++++++++++++++++++++++++++*#*-::::::::.                    .  .
+     .          .    .   ..=+++++++++++++++++++++++++++++++++++++##+::::::::...        .       .    
+              .               :+++++++++++++++++++++++++++++++++++*##:::::::::.                     
+                                ..:-+*+++++++++++++++++++++++++++++###-::::::::. .                  
+                                 .  ...++++++++++++++++++++++++++++*##*:::::::::.              .    
+                .        .            .+*****##*+***************+***###-::::::::.                   
+             .              ...........+*****###-=+******************##*::::::::.    .  .       .   
+ .               .........:-=+++*#*-::-+*****###---=*****************###::::::::.                   
+               .=+***************##----+*****###----+****************###::::::::.       .        .  
+       . .     .-*****************#+---******##*----+****************###::::::::.                   
+               ..******************#===******###********************###*::::::::.  .                
+           .     -*******************==******#####*****************#####********.                   
+                ..=**************************###*******************############..        .          
+       .   ..     .=**********************************************############-..      .     .      
+                   .-*******************************************############*:.    ..               
+                     .+****************************************############*.          .            
+       .     . .      .:*#################################################:.                        
+              . .      ..-#############################################+:..     .             .     
+                          .:=######################################*=:. .                           
+      .     . .             ...:+*#########################**+=-:...       .      .                 
+                                    ..:*#########**++=---:.    .            ..                      
+                         ..............*#######*---------:................                         .
+             .........................:########*::::::::::..........................      .         
+   .       ......................:::::-########*:::::------::::::......................          .  
+      .    .....................:::::---===++++*+*++++===----:::::......................            
+ .    .    ............................::::::::::-:::::::::..........................               
+           .       ............................................................              .      
+  .                        .......  .   . ...............       ......        .   .   .     .       
+                   .                               .                                       .        
+                                                                              .                     </pre>
+    <script>
+    (function () {
+        var art = document.getElementById('art');
+        var lines = art.textContent.replace(/^\n/, '').replace(/\s+$/, '').split('\n');
+        var rows = lines.length, cols = 0;
+        lines.forEach(function (l) { cols = Math.max(cols, l.length); });
+
+        // Measure one character cell of the monospace font.
+        var probe = document.createElement('pre');
+        probe.style.cssText = 'position:absolute;visibility:hidden;margin:0;white-space:pre';
+        probe.textContent = new Array(101).join('M');
+        document.body.appendChild(probe);
+        var cw = probe.getBoundingClientRect().width / 100;
+        var ch = parseFloat(getComputedStyle(art).fontSize) * 1.2;
+        document.body.removeChild(probe);
+
+        // A "." with no solid art character within 2 cells is a loose dot that can fall.
+        function solid(c) { return c !== undefined && c !== ' ' && c !== '.'; }
+        function nearSolid(r, c) {
+            for (var dr = -2; dr <= 2; dr++) for (var dc = -2; dc <= 2; dc++) {
+                var l = lines[r + dr];
+                if (l && solid(l[c + dc])) return true;
+            }
+            return false;
+        }
+        var body = [], dots = [], occupied = [];
+        for (var r = 0; r < rows; r++) {
+            var out = '';
+            occupied[r] = [];
+            for (var c = 0; c < cols; c++) {
+                var ch1 = lines[r][c] || ' ';
+                var isLoose = ch1 === '.' && !nearSolid(r, c);
+                if (isLoose) { dots.push({ r: r, c: c }); out += ' '; }
+                else out += ch1;
+                occupied[r][c] = ch1 !== ' ' && !isLoose;
+            }
+            body.push(out);
+        }
+
+        var W = cols * cw, H = rows * ch;
+        var scene = document.getElementById('scene');
+        var stage = document.getElementById('stage');
+        var spin = document.getElementById('spin');
+        var rain = document.getElementById('rain');
+        stage.style.width = W + 'px';
+        stage.style.height = H + 'px';
+        spin.textContent = body.join('\n');
+        spin.style.width = W + 'px';
+
+        var spans = dots.map(function (d) {
+            var s = document.createElement('span');
+            s.textContent = '.';
+            rain.appendChild(s);
+            return { el: s, x: d.c * cw, y0: d.r * ch, speed: 14 + Math.random() * 34, c: d.c };
+        });
+
+        function fit() {
+            var k = Math.min(1, (window.innerWidth - 24) / W, (window.innerHeight - 24) / H);
+            stage.style.transform = 'scale(' + k + ')';
+        }
+        window.addEventListener('resize', fit);
+        fit();
+        art.hidden = true;
+        scene.hidden = false;
+
+        var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var t0 = performance.now();
+        function frame(now) {
+            var t = calm ? 0 : (now - t0) / 1000;
+            for (var i = 0; i < spans.length; i++) {
+                var p = spans[i];
+                var y = (p.y0 + p.speed * t) % H;
+                var row = Math.min(rows - 1, Math.floor(y / ch));
+                // Drops pass behind the dollar sign, so they read as falling around it.
+                p.el.style.visibility = occupied[row][p.c] ? 'hidden' : 'visible';
+                p.el.style.transform = 'translate(' + p.x + 'px,' + y + 'px)';
+            }
+            if (!calm) requestAnimationFrame(frame);
+        }
+        frame(performance.now());
+    })();
+    </script>
+</body>
+</html>
