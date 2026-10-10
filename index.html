@@ -1,25 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ready Set New</title>
-<style>
-  :root { --bg:#0f1115; --fg:#e8e8e8; --muted:#8a8f98; --accent:#5ee3a1; }
-  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
-  main { min-height:100%; display:grid; place-items:center; padding:24px 16px; box-sizing:border-box; }
-  .card { max-width:520px; text-align:center; }
-  h1 { font-size:2rem; margin:0 0 8px; letter-spacing:-0.02em; }
-  p { margin:0; color:var(--muted); }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:8px; vertical-align:middle; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ready Set New</title>
+    <style>
+        html, body { height: 100%; margin: 0; background: #000; color: #e8e8e8; font: 16px/1.5 system-ui, sans-serif; overflow: hidden; }
+        iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+        /* NEXT SCENE slot. Stand-in until the real next scenes (project intro, standby / lock screen, zoom out) are supplied. */
+        #next { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px 16px; box-sizing: border-box; opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
+        #next.show { opacity: 1; pointer-events: auto; }
+        #next h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.02em; }
+        #next p { margin: 0; color: #8a8f98; }
+        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #5ee3a1; margin-right: 8px; vertical-align: middle; }
+    </style>
 </head>
 <body>
-<main>
-  <div class="card">
-    <h1>Ready Set New</h1>
-    <p><span class="dot"></span>Server online. The system will appear here.</p>
-  </div>
-</main>
+    <iframe id="welcome" src="assets/welcome-dollar-3d.html?embed=1&hold=7" title="Welcome"></iframe>
+    <div id="next"><div><h1>Ready Set New</h1><p><span class="dot"></span>Server online. The system will appear here.</p></div></div>
+    <script src="assets/rsn-gate.js"></script>
+    <script>
+        var started = false;
+        function nextScene() {
+            if (started) return;
+            started = true;
+            var f = document.getElementById('welcome');
+            if (f) f.remove();
+            // Password gate first, then the project scene.
+            RSNGate.require(function () { document.getElementById('next').classList.add('show'); });
+        }
+        window.addEventListener('message', function (e) { if (e.data && e.data.type === 'rsn-welcome-done') nextScene(); });
+        setTimeout(nextScene, 20000);   // safety net: never leave a blank screen
+    </script>
 </body>
 </html>
