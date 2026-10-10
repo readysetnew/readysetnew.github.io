@@ -7,17 +7,33 @@
     <style>
         html, body { height: 100%; margin: 0; background: #000; color: #e8e8e8; font: 16px/1.5 system-ui, sans-serif; overflow: hidden; }
         iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
-        /* NEXT SCENE slot. Stand-in until the real next scenes (project intro, standby / lock screen, zoom out) are supplied. */
-        #next { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px 16px; box-sizing: border-box; opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
+        /* Login scene shown after the dollar sign. Same look as the server's login page. */
+        :root { --g: #90ee90; --g2: #5fbf6a; --dim: #8a8f98; }
+        #next { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px 16px; box-sizing: border-box; font-family: monospace; color: var(--g); opacity: 0; transition: opacity 1.6s ease; pointer-events: none; }
         #next.show { opacity: 1; pointer-events: auto; }
-        #next h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.02em; }
-        #next p { margin: 0; color: #8a8f98; }
-        .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #5ee3a1; margin-right: 8px; vertical-align: middle; }
+        .frame { width: 100%; max-width: 340px; box-sizing: border-box; border: 1px solid var(--g2); border-radius: 10px; padding: 28px 24px 24px; text-align: center; box-shadow: 0 0 28px rgba(144,238,144,.16), inset 0 0 18px rgba(144,238,144,.05); }
+        .frame img { display: block; max-width: 120px; max-height: 56px; margin: 0 auto 16px; }
+        .frame h1 { font-size: 1rem; letter-spacing: .28em; margin: 0 0 4px; font-weight: normal; text-transform: uppercase; }
+        .sub { color: var(--dim); font-size: .8rem; margin: 0 0 20px; }
+        .frame input[type=password] { width: 100%; box-sizing: border-box; background: #000; color: var(--g); border: 1px solid var(--g2); border-radius: 4px; padding: 10px 12px; font: inherit; text-align: center; outline: none; }
+        .frame input[type=password]:focus { border-color: var(--g); box-shadow: 0 0 0 2px rgba(144,238,144,.18); }
+        .frame button { margin-top: 12px; width: 100%; background: var(--g); color: #031; border: 0; border-radius: 4px; padding: 10px 12px; font: inherit; font-weight: bold; cursor: pointer; }
+        .frame button:hover { background: #b6f5b6; }
     </style>
 </head>
 <body>
     <iframe id="welcome" src="assets/welcome-dollar-3d.html?embed=1&hold=7" title="Welcome"></iframe>
-    <div id="next"><div><h1>Ready Set New</h1><p><span class="dot"></span>Server online. The system will appear here.</p></div></div>
+    <div id="next">
+        <!-- Logs in on the server (auth.readysetnew.com), then launches the project. Edit these two addresses when projects change. -->
+        <form class="frame" method="post" action="https://auth.readysetnew.com/login" autocomplete="off">
+            <img src="assets/one-com-asset.png" alt="" onerror="this.remove()"><!-- the light green one.com asset goes here -->
+            <h1>Dew Project</h1>
+            <div class="sub">log in to continue</div>
+            <input type="hidden" name="next" value="https://dw.readysetnew.com/">
+            <input type="password" name="password" aria-label="Password" placeholder="password" autocomplete="current-password" required>
+            <button type="submit">Log in</button>
+        </form>
+    </div>
     <script>
         var started = false;
         function nextScene() {
@@ -25,7 +41,7 @@
             started = true;
             var f = document.getElementById('welcome');
             if (f) f.remove();
-            // Stand-in for the next scenes. Protected projects are locked on the server, not in this page.
+            // The login frame. The password is checked on the server, never in this page.
             document.getElementById('next').classList.add('show');
         }
         window.addEventListener('message', function (e) { if (e.data && e.data.type === 'rsn-welcome-done') nextScene(); });
